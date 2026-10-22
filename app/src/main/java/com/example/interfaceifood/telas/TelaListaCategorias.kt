@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,11 @@ import com.example.interfaceifood.model.Categoria
 @Composable
 fun TelaListaCategorias(navController: NavController) {
     val context = LocalContext.current
+
+
+    LaunchedEffect(Unit) {
+        DadosApp.carregar()
+    }
 
     var nome by remember { mutableStateOf("") }
     var descricao by remember { mutableStateOf("") }
@@ -74,8 +80,7 @@ fun TelaListaCategorias(navController: NavController) {
                         if (nome == "") {
                             Toast.makeText(context, "Digite o nome da categoria", Toast.LENGTH_SHORT).show()
                         } else {
-                            DadosApp.categorias.add(Categoria(DadosApp.proximoIdCategoria, nome, descricao))
-                            DadosApp.proximoIdCategoria++
+                            DadosApp.adicionarCategoria(Categoria(0, nome, descricao))
                             nome = ""
                             descricao = ""
                             Toast.makeText(context, "Categoria adicionada!", Toast.LENGTH_SHORT).show()
@@ -105,7 +110,7 @@ fun TelaListaCategorias(navController: NavController) {
                             if (quantidadeLojas > 0) {
                                 Toast.makeText(context, "Remova as lojas dessa categoria primeiro", Toast.LENGTH_SHORT).show()
                             } else {
-                                DadosApp.categorias.remove(categoria)
+                                DadosApp.removerCategoria(categoria)
                                 Toast.makeText(context, "Categoria removida", Toast.LENGTH_SHORT).show()
                             }
                         }

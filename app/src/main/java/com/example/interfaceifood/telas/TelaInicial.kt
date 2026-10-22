@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -26,6 +27,11 @@ import com.example.interfaceifood.navegacao.Rotas
 
 @Composable
 fun TelaInicial(navController: NavController) {
+
+    LaunchedEffect(Unit) {
+        DadosApp.carregar()
+    }
+
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("ENTREGAR EM", style = MaterialTheme.typography.labelSmall)
         Text("Avenida Batel, n° 630", fontWeight = FontWeight.Bold)

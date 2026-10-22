@@ -25,6 +25,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,11 @@ import com.example.interfaceifood.model.textoTaxa
 @Composable
 fun TelaListaLojas(navController: NavController) {
     val context = LocalContext.current
+
+
+    LaunchedEffect(Unit) {
+        DadosApp.carregar()
+    }
 
     var nome by remember { mutableStateOf("") }
     var avaliacao by remember { mutableStateOf("") }
@@ -104,15 +110,14 @@ fun TelaListaLojas(navController: NavController) {
                             Toast.makeText(context, "Digite o nome da loja", Toast.LENGTH_SHORT).show()
                         } else {
                             val novaLoja = Loja(
-                                DadosApp.proximoIdLoja,
+                                0, // o Room gera o id (autoGenerate)
                                 nome,
                                 categoriaId,
                                 avaliacao.toDoubleOrNull() ?: 0.0,
                                 tempo,
                                 taxa.toDoubleOrNull() ?: 0.0
                             )
-                            DadosApp.lojas.add(novaLoja)
-                            DadosApp.proximoIdLoja++
+                            DadosApp.adicionarLoja(novaLoja)
 
                             nome = ""
                             avaliacao = ""
@@ -157,7 +162,7 @@ fun TelaListaLojas(navController: NavController) {
                     )
 
 
-                    IconButton(onClick = { DadosApp.lojas.remove(loja) }) {
+                    IconButton(onClick = { DadosApp.removerLoja(loja) }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Remover")
                     }
                 }
