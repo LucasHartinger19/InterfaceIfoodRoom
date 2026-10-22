@@ -83,11 +83,8 @@ fun TelaAcompanharPedido(navController: NavController) {
 
             Button(
                 onClick = {
-                    if (etapaAtual < DadosApp.etapas.size - 1) {
-                        DadosApp.etapaPedido.value = etapaAtual + 1
-                    } else {
-                        Toast.makeText(context, "O pedido já foi entregue!", Toast.LENGTH_SHORT).show()
-                    }
+                    if (etapaAtual < DadosApp.etapas.size - 1) DadosApp.avancarEtapa()
+                    else Toast.makeText(context, "O pedido já foi entregue!", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -96,13 +93,14 @@ fun TelaAcompanharPedido(navController: NavController) {
 
             Button(
                 onClick = {
-                    DadosApp.pedidoLojaId.value = 0
+                    DadosApp.cancelarPedido()
                     Toast.makeText(context, "Pedido cancelado", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Cancelar pedido")
             }
+
 
             Button(
                 onClick = {

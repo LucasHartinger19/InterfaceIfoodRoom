@@ -85,8 +85,7 @@ fun TelaDetalheLoja(navController: NavController, id: Int) {
 
         Button(
             onClick = {
-                DadosApp.pedidoLojaId.value = loja.id
-                DadosApp.etapaPedido.value = 0
+                DadosApp.fazerPedido(loja, valorManual = valorPedido.toDoubleOrNull() ?: 0.0)
                 navController.navigate(Rotas.PEDIDO)
             },
             modifier = Modifier.fillMaxWidth()
