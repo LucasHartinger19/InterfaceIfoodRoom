@@ -1,7 +1,6 @@
 package com.example.interfaceifood.dados
 
 import androidx.room3.Dao
-import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
@@ -18,9 +17,6 @@ interface PedidoDAO {
     @Update
     suspend fun atualizarPedido(pedido: Pedido)
 
-    @Delete
-    suspend fun deletarPedido(pedido: Pedido)
-
 
     @Query("SELECT * FROM pedidos ORDER BY dataHora DESC")
     suspend fun buscarPedidos(): List<Pedido>
@@ -34,7 +30,4 @@ interface PedidoDAO {
 
     @Query("SELECT * FROM itens_pedido WHERE pedidoId = :pedidoId")
     suspend fun buscarItens(pedidoId: Int): List<ItemPedido>
-
-    @Query("DELETE FROM itens_pedido WHERE pedidoId = :pedidoId")
-    suspend fun deletarItens(pedidoId: Int)
 }

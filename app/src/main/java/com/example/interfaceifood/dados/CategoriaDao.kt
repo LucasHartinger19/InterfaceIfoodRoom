@@ -16,9 +16,6 @@ interface CategoriaDAO {
     @Query("SELECT * FROM categorias")
     suspend fun buscarCategorias(): List<Categoria>
 
-    @Query("SELECT * FROM categorias WHERE id = :id")
-    suspend fun buscarPorId(id: Int): Categoria?
-
     @Update
     suspend fun atualizar(categoria: Categoria)
 
