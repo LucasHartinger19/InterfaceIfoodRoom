@@ -17,7 +17,7 @@ sobrevivem ao fechar e abrir o app.
 
 1. Clone o repositório:
    ```
-   git clone https://github.com/LucasHartinger19/NOME-DO-REPOSITORIO-NOVO.git
+      git clone https://github.com/LucasHartinger19/InterfaceIfoodRoom.git
    ```
 2. Abra a pasta no **Android Studio** e espere o **Gradle Sync** terminar.
 3. Inicie um emulador (ou conecte um celular com depuração USB) com **Android 7.0 (API 24) ou superior**.
