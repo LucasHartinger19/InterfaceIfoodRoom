@@ -66,7 +66,7 @@ fun TelaAcompanharPedido(navController: NavController) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(loja.nome, fontWeight = FontWeight.Bold)
-                    Text("Pedido #" + (9800 + loja.id))
+                    Text("Pedido #" + (DadosApp.pedidoAtual.value?.id ?: 0))
                 }
             }
 

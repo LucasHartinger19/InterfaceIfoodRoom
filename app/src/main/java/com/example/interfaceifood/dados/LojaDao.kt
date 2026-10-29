@@ -16,6 +16,10 @@ interface LojaDAO {
     @Query("SELECT * FROM lojas")
     suspend fun buscarLojas(): List<Loja>
 
+
+    @Query("SELECT * FROM lojas WHERE id = :id")
+    suspend fun buscarPorId(id: Int): Loja?
+
     @Update
     suspend fun atualizar(loja: Loja)
 

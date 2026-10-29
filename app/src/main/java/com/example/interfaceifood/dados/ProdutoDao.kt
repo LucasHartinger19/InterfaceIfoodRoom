@@ -19,11 +19,15 @@ interface ProdutoDAO {
     @Query("SELECT * FROM produtos WHERE lojaId = :lojaId")
     suspend fun buscarPorLoja(lojaId: Int): List<Produto>
 
+    @Query("SELECT * FROM produtos WHERE id = :id")
+    suspend fun buscarPorId(id: Int): Produto?
+
     @Update
     suspend fun atualizar(produto: Produto)
 
     @Delete
     suspend fun deletar(produto: Produto)
+
 
     @Query("DELETE FROM produtos WHERE lojaId = :lojaId")
     suspend fun deletarPorLoja(lojaId: Int)
