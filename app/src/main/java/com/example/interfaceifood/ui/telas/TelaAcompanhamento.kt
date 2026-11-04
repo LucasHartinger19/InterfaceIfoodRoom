@@ -1,4 +1,4 @@
-package com.example.interfaceifood.telas
+package com.example.interfaceifood.ui.telas
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -13,21 +13,33 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.interfaceifood.dados.DadosApp
-import com.example.interfaceifood.navegacao.Rotas
+import com.example.interfaceifood.ui.navegacao.Rotas
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
+import com.example.interfaceifood.viewmodel.PedidoViewModel
 
 
 @Composable
-fun TelaAcompanharPedido(navController: NavController) {
+fun TelaAcompanharPedido(
+    navController: NavController,
+    factory: AppViewModelFactory,
+    viewModel: PedidoViewModel = viewModel(factory = factory)
+) {
     val context = LocalContext.current
-    val loja = DadosApp.buscarLoja(DadosApp.pedidoLojaId.value)
-    val etapaAtual = DadosApp.etapaPedido.value
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    if (uiState.carregando) return
+
+    val loja = uiState.loja
+    val etapaAtual = uiState.pedido?.etapa ?: 0
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
 
@@ -48,8 +60,8 @@ fun TelaAcompanharPedido(navController: NavController) {
 
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(12.dp)) {
-                    for (i in DadosApp.etapas.indices) {
-                        LinhaStatus(DadosApp.etapas[i], i <= etapaAtual)
+                    for (i in uiState.etapas.indices) {
+                        LinhaStatus(uiState.etapas[i], i <= etapaAtual)
                     }
                 }
             }
@@ -66,7 +78,7 @@ fun TelaAcompanharPedido(navController: NavController) {
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Text(loja.nome, fontWeight = FontWeight.Bold)
-                    Text("Pedido #" + (DadosApp.pedidoAtual.value?.id ?: 0))
+                    Text("Pedido #" + (uiState.pedido?.id ?: 0))
                 }
             }
 
@@ -83,8 +95,9 @@ fun TelaAcompanharPedido(navController: NavController) {
 
             Button(
                 onClick = {
-                    if (etapaAtual < DadosApp.etapas.size - 1) DadosApp.avancarEtapa()
-                    else Toast.makeText(context, "O pedido já foi entregue!", Toast.LENGTH_SHORT).show()
+                    if (!viewModel.avancarEtapa()) {
+                        Toast.makeText(context, "O pedido já foi entregue!", Toast.LENGTH_SHORT).show()
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -93,7 +106,7 @@ fun TelaAcompanharPedido(navController: NavController) {
 
             Button(
                 onClick = {
-                    DadosApp.cancelarPedido()
+                    viewModel.cancelarPedido()
                     Toast.makeText(context, "Pedido cancelado", Toast.LENGTH_SHORT).show()
                 },
                 modifier = Modifier.fillMaxWidth()

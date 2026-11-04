@@ -1,4 +1,4 @@
-package com.example.interfaceifood.model
+package com.example.interfaceifood.data.local
 
 import androidx.room3.Entity
 import androidx.room3.PrimaryKey
@@ -52,6 +52,8 @@ const val STATUS_ANDAMENTO = "Em andamento"
 const val STATUS_ENTREGUE = "Entregue"
 const val STATUS_CANCELADO = "Cancelado"
 
+val ETAPAS_PEDIDO = listOf("Pedido confirmado", "Em preparo", "A caminho", "Entregue")
+
 
 @Entity(tableName = "itens_pedido")
 data class ItemPedido(
@@ -63,15 +65,3 @@ data class ItemPedido(
     val precoUnitario: Double,
     val quantidade: Int
 )
-
-
-fun textoTaxa(taxa: Double): String {
-    if (taxa == 0.0) {
-        return "Entrega Grátis"
-    }
-    return "Entrega R$ " + taxa
-}
-
-fun textoPreco(valor: Double): String {
-    return "R$ " + "%.2f".format(valor)
-}

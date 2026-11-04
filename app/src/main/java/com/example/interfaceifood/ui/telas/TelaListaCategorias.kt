@@ -1,4 +1,4 @@
-package com.example.interfaceifood.telas
+package com.example.interfaceifood.ui.telas
 
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -19,32 +19,27 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.interfaceifood.dados.DadosApp
-import com.example.interfaceifood.model.Categoria
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
+import com.example.interfaceifood.viewmodel.CategoriasViewModel
 
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun TelaListaCategorias(navController: NavController) {
+fun TelaListaCategorias(
+    navController: NavController,
+    factory: AppViewModelFactory,
+    viewModel: CategoriasViewModel = viewModel(factory = factory)
+) {
     val context = LocalContext.current
-
-
-    LaunchedEffect(Unit) {
-        DadosApp.carregar()
-    }
-
-    var nome by remember { mutableStateOf("") }
-    var descricao by remember { mutableStateOf("") }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -56,8 +51,8 @@ fun TelaListaCategorias(navController: NavController) {
                 Text("Nova categoria", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
 
                 OutlinedTextField(
-                    value = nome,
-                    onValueChange = { nome = it },
+                    value = uiState.nome,
+                    onValueChange = { viewModel.alterarNome(it) },
                     label = { Text("Nome") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -66,8 +61,8 @@ fun TelaListaCategorias(navController: NavController) {
 
 
                 TextField(
-                    value = descricao,
-                    onValueChange = { descricao = it },
+                    value = uiState.descricao,
+                    onValueChange = { viewModel.alterarDescricao(it) },
                     label = { Text("Descrição") },
                     minLines = 3,
                     modifier = Modifier.fillMaxWidth()
@@ -77,13 +72,10 @@ fun TelaListaCategorias(navController: NavController) {
 
                 Button(
                     onClick = {
-                        if (nome == "") {
-                            Toast.makeText(context, "Digite o nome da categoria", Toast.LENGTH_SHORT).show()
-                        } else {
-                            DadosApp.adicionarCategoria(Categoria(0, nome, descricao))
-                            nome = ""
-                            descricao = ""
+                        if (viewModel.adicionarCategoria()) {
                             Toast.makeText(context, "Categoria adicionada!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Digite o nome da categoria", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -97,8 +89,8 @@ fun TelaListaCategorias(navController: NavController) {
         }
 
 
-        items(DadosApp.categorias) { categoria ->
-            val quantidadeLojas = DadosApp.lojas.count { it.categoriaId == categoria.id }
+        items(uiState.categorias) { categoria ->
+            val quantidadeLojas = uiState.quantidadeLojas(categoria.id)
 
             Card(
                 modifier = Modifier
@@ -106,12 +98,10 @@ fun TelaListaCategorias(navController: NavController) {
                     .combinedClickable(
                         onClick = { navController.navigate("detalheCategoria/${categoria.id}") },
                         onLongClick = {
-
-                            if (quantidadeLojas > 0) {
-                                Toast.makeText(context, "Remova as lojas dessa categoria primeiro", Toast.LENGTH_SHORT).show()
-                            } else {
-                                DadosApp.removerCategoria(categoria)
+                            if (viewModel.removerCategoria(categoria)) {
                                 Toast.makeText(context, "Categoria removida", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Remova as lojas dessa categoria primeiro", Toast.LENGTH_SHORT).show()
                             }
                         }
                     )

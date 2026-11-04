@@ -1,15 +1,16 @@
-# Interface iFood — Trabalho 3 (Persistência de Dados com Room)
+# Interface iFood — Trabalho 4 (Arquitetura MVVM)
 
 App Android em **Kotlin + Jetpack Compose** inspirado no iFood. É a continuação do
-Trabalho 2 ([IfoodInterface](https://github.com/LucasHartinger19/IfoodInterface)):
-o app continua com as mesmas telas, navegação e listas, mas agora **todos os dados
-ficam salvos em um banco SQLite usando o Room**. Lojas, categorias e pedidos
-sobrevivem ao fechar e abrir o app.
+Trabalho 3: as telas, os campos e as funcionalidades são os mesmos, mas o código foi
+reorganizado em camadas com **MVVM** (Model — View — ViewModel), usando `Repository`,
+`Flow`, `StateFlow`/`UiState` e `ViewModelFactory`.
 
 **Integrantes:**
 - Lucas Pereira Hartinger
 - Luis Felipe de Paula Fogaça
 - Felipe Paulista Silveira
+
+A documentação do trabalho anterior continua em [docs/TRABALHO3.md](docs/TRABALHO3.md).
 
 ---
 
@@ -17,163 +18,170 @@ sobrevivem ao fechar e abrir o app.
 
 1. Clone o repositório:
    ```
-      git clone https://github.com/LucasHartinger19/InterfaceIfoodRoom.git
+   git clone https://github.com/LucasHartinger19/InterfaceIfoodRoom.git
    ```
 2. Abra a pasta no **Android Studio** e espere o **Gradle Sync** terminar.
 3. Inicie um emulador (ou conecte um celular com depuração USB) com **Android 7.0 (API 24) ou superior**.
 4. Clique em **Run ▶**.
 
-> Se o app de uma versão anterior (Trabalho 2) já estiver instalado no emulador,
-> desinstale antes de rodar. Assim o banco é criado do zero com os dados iniciais.
+**Versões usadas:** AGP 9.0.0 · Kotlin 2.2.21 · KSP 2.3.4 · Room 3.0.3 · Lifecycle 2.9.4 · compileSdk 37 · minSdk 24
 
-**Versões usadas:** AGP 9.0.0 · Kotlin 2.2.21 · KSP 2.3.4 · Room 3.0.3 · compileSdk 37 · minSdk 24
+---
 
+## 1. Como estava o projeto no Trabalho 3 e o que mudou
 
+No Trabalho 3 a persistência funcionava, mas quase tudo passava pelo objeto `DadosApp`,
+com 314 linhas. Ele guardava as listas `mutableStateListOf`, chamava os DAOs, abria
+`CoroutineScope`, escolhia `Dispatchers.IO` e ainda tinha as regras de negócio. As telas
+acessavam esse objeto diretamente, e os campos de formulário ficavam em vários `remember`.
 
-## 1. Como estava o projeto no Trabalho 2 e o que mudou
-
-No Trabalho 2, todos os dados ficavam no objeto `DadosApp`, em listas
-`mutableStateListOf` preenchidas direto no código:
-
-```kotlin
-val lojas = mutableStateListOf(
-    Loja(1, "Mc Donalds", 2, 4.8, "20-30 min", 0.0),
-    ...
-)
-```
-
-A navegação e o CRUD funcionavam, mas tudo ficava só na memória. Quando a Activity
-era destruída (app fechado), qualquer loja adicionada, removida ou editada se perdia.
-
-**O que mudou no Trabalho 3:**
-
-| Antes (Trabalho 2) | Agora (Trabalho 3) |
+| Antes (Trabalho 3) | Agora (Trabalho 4) |
 |---|---|
-| Dados fixos dentro do `DadosApp` | Dados salvos no banco `ifood_database` (SQLite via Room) |
-| IDs controlados à mão (`proximoIdLoja++`) | IDs gerados pelo banco (`autoGenerate = true`) |
-| Adicionar/remover só mexia na lista | Cada ação chama o DAO (`inserir`, `atualizar`, `deletar`) |
-| Telas de detalhe procuravam na lista | Telas de detalhe buscam no banco pelo id (`buscarPorId`) |
-| Pedido existia só enquanto o app estava aberto | Pedido e histórico ficam salvos e são restaurados ao abrir o app |
+| Pastas `dados`, `model`, `telas`, `navegacao`, `componentes` | Pacotes `ui`, `data.local`, `data.repository`, `viewmodel` |
+| `DadosApp` fazia tudo | `DadosApp` foi removido: cada responsabilidade foi para sua camada |
+| Tela chamava `DadosApp`, que chamava o DAO | Tela → ViewModel → Repository → DAO |
+| `suspend fun buscarLojas(): List<Loja>` | `fun buscarTodos(): Flow<List<Loja>>` |
+| Depois de gravar, era preciso atualizar a lista à mão | O Room avisa o `Flow` e a tela atualiza sozinha |
+| `LaunchedEffect { DadosApp.carregar() }` em cada lista | Removido: o ViewModel observa o `Flow` no `init` |
+| Vários `remember { mutableStateOf(...) }` | Um `UiState` por tela |
+| `CoroutineScope` e `Dispatchers.IO` manuais | `viewModelScope`, com as chamadas `suspend` do Room |
 
-As listas `mutableStateListOf` **continuam existindo**, mas agora servem só para a
-tela se atualizar sozinha. A fonte da verdade é o banco: sempre que o app abre, elas
-são preenchidas a partir dele.
-
-
-## 2. Entity, DAO e Database criados
-
-### Entities (`model/Modelos.kt`)
-
-Aproveitamos as data classes `Loja` e `Categoria` do Trabalho 2 e criamos três novas
-para o pedido. Todas usam `@Entity(tableName = "...")` e
-`@PrimaryKey(autoGenerate = true) val id: Int = 0`.
-
-| Entity | Tabela | Campos | Por que esses campos |
-|---|---|---|---|
-| `Categoria` | `categorias` | id, nome, descricao | Os mesmos do Trabalho 2: é o que aparece nos chips e no detalhe da categoria. |
-| `Loja` | `lojas` | id, nome, categoriaId, avaliacao, tempoEntrega, taxaEntrega, favorita | Tudo o que a lista, a busca e os filtros usam. `categoriaId` liga a loja à categoria. `favorita` agora fica salva. |
-| `Produto` | `produtos` | id, lojaId, nome, descricao, preco, disponivel | Cardápio de cada loja. `lojaId` indica de qual loja é o produto. |
-| `Pedido` | `pedidos` | id, lojaId, dataHora, etapa, status, subtotal, taxaEntrega, total | Para o acompanhamento do pedido sobreviver ao fechar o app. `etapa` guarda o passo atual e `status` diz se está em andamento, entregue ou cancelado. |
-| `ItemPedido` | `itens_pedido` | id, pedidoId, produtoId, nomeProduto, precoUnitario, quantidade | Itens de cada pedido. Guardamos nome e preço no momento da compra, para o pedido não mudar se o produto for editado depois. |
-
-### DAOs (`dados/`)
-
-| DAO | Métodos básicos | Consultas extras |
-|---|---|---|
-| `CategoriaDAO` | inserir, buscarCategorias, atualizar, deletar | `buscarPorId(id)` |
-| `LojaDAO` | inserir, buscarLojas, atualizar, deletar | `buscarPorId(id)` |
-| `ProdutoDAO` | inserir, buscarProdutos, atualizar, deletar | `buscarPorId(id)`, `buscarPorLoja(lojaId)`, `deletarPorLoja(lojaId)` |
-| `PedidoDAO` | inserirPedido, buscarPedidos, atualizarPedido, deletarPedido | `buscarPedidoEmAndamento()`, `inserirItens`, `buscarItens(pedidoId)`, `deletarItens(pedidoId)` |
-
-Todos os métodos são `suspend fun`.
-
-### Database (`dados/AppDataBase.kt`)
-
-A classe `AppDatabase` estende `RoomDatabase`, lista as 5 entidades em
-`@Database(entities = [...], version = 1)` e expõe os 4 DAOs. Ela segue o padrão
-**Singleton** visto em aula (`companion object` + `@Volatile` + `synchronized`), para
-existir só uma conexão com o banco no app inteiro.
-
-O banco é aberto uma vez na `MainActivity`, com `DadosApp.iniciar(applicationContext)`.
-Na primeira execução, se a tabela de categorias estiver vazia, o app insere os dados
-iniciais (5 categorias, 5 lojas e 10 produtos).
-
----
-
-## 3. Como estruturamos as queries extras
-
-- **`buscarPorId(id)`** em Loja, Categoria e Produto: é o que as telas de detalhe
-  usam. Quando o usuário toca em uma loja, a rota `detalheLoja/{id}` passa o id, e a
-  tela faz `SELECT * FROM lojas WHERE id = :id` em vez de procurar na lista em memória.
-- **`buscarPorLoja(lojaId)`**: devolve só os produtos de uma loja (o cardápio).
-- **`deletarPorLoja(lojaId)`**: quando uma loja é removida, os produtos dela também
-  são apagados, para não sobrar produto sem loja no banco.
-- **`buscarPedidoEmAndamento()`**: busca o último pedido com status
-  "Em andamento". É o que permite reabrir o app e continuar acompanhando o pedido.
-- **`buscarPedidos()`** com `ORDER BY dataHora DESC`: histórico do mais recente para
-  o mais antigo.
-
----
-
-## 4. Dificuldades na migração de `mutableStateListOf` para Room
-
-**1. Chamadas ao banco não podem rodar na thread principal**
-O Room não deixa acessar o banco na thread da interface. Por isso todas as chamadas
-ao DAO rodam em `Dispatchers.IO`. Nas funções que retornam algo (como buscar por id),
-usamos `withContext(Dispatchers.IO) { ... }`, que roda a consulta em segundo plano e
-devolve o resultado para a tela. Nas que só gravam (atualizar, deletar), usamos
-`escopo.launch(Dispatchers.IO) { ... }`.
-
-**2. O id agora é gerado pelo banco**
-No Trabalho 2 a gente controlava o próximo id à mão. Agora a loja nova é criada com
-`id = 0`, o `dao.inserir()` devolve o id gerado e a lista da tela recebe a loja com
-esse id: `lojas.add(loja.copy(id = novoId.toInt()))`. Sem isso, tocar na loja recém-criada
-abria o detalhe errado.
-
-**3. As telas de detalhe ficaram assíncronas**
-Antes a loja era encontrada na hora. Agora a tela abre, dispara um `LaunchedEffect(id)`
-que busca no banco, e só depois mostra os dados. Enquanto isso aparece "Carregando...",
-e se não achar aparece "Loja não encontrada".
-
-**4. Dados iniciais duplicando**
-Inserir as lojas iniciais toda vez que o app abria duplicava os registros. A solução
-foi só inserir quando a tabela de categorias estiver vazia (primeira execução).
-
-**5. Bug do pedido entregue virando cancelado**
-Ao fazer um pedido novo, o anterior era sempre marcado como cancelado, mesmo se já
-tivesse sido entregue. Corrigimos para cancelar só se o status ainda for
-"Em andamento".
-
----
-
-## 5. Teste de persistência
-
-1. Abrir a tela **Lojas** e adicionar uma loja nova.
-2. Fechar o app completamente (tirar da lista de apps recentes).
-3. Abrir o app de novo e ir em **Lojas**.
-4. ✅ A loja continua lá.
-
-O mesmo vale para remover uma loja, editar a nota, marcar como favorita e adicionar
-ou editar categorias.
-
-
-## Estrutura do código
+## 2. Como dividimos os pacotes
 
 ```
 app/src/main/java/com/example/interfaceifood/
-├── MainActivity.kt            → abre o banco (DadosApp.iniciar) e chama AppNavigation()
-├── model/Modelos.kt           → as 5 @Entity + funções de formatação (R$, taxa)
-├── dados/
-│   ├── AppDataBase.kt         → @Database com Singleton
-│   ├── CategoriaDao.kt        → @Dao de categorias
-│   ├── LojaDao.kt             → @Dao de lojas
-│   ├── ProdutoDao.kt          → @Dao de produtos
-│   ├── PedidoDao.kt           → @Dao de pedidos e itens
-│   └── DadosApp.kt            → liga as telas ao banco (carregar, adicionar, remover, editar)
-├── navegacao/
-│   ├── Rotas.kt               → rotas do app
-│   └── AppNavigation.kt       → Scaffold + NavHost + NavigationBar
-├── componentes/Componentes.kt → CardLoja
-├── telas/                     → uma tela por arquivo
-└── ui/theme/Theme.kt          → cores do app (vermelho iFood)
+├── MainActivity.kt            → cria banco, Repositories e Factory
+├── data/
+│   ├── local/                 → Modelos (5 @Entity), 4 @Dao, AppDatabase, DadosIniciais
+│   └── repository/            → Loja, Categoria, Produto, Pedido e DadosIniciaisRepository
+├── viewmodel/                 → 7 ViewModels com seus UiState + AppViewModelFactory
+└── ui/
+    ├── telas/                 → uma tela por arquivo
+    ├── componentes/           → CardLoja e funções de texto
+    ├── navegacao/             → Rotas e AppNavigation
+    └── theme/                 → cores do app
 ```
+
+A regra que usamos para decidir o lugar de cada arquivo foi perguntar **o que ele faz**:
+
+- **`ui`:** tudo que desenha ou navega. Inclui `navegacao` e `componentes`, porque são parte da interface.
+- **`data.local`:** tudo que depende do Room. Os arquivos foram movidos sem mudar as tabelas, por isso o banco continua na versão 1.
+- **`data.repository`:** a porta de entrada dos dados. Só essa camada fala com os DAOs.
+- **`viewmodel`:** estado das telas e regras, como "a categoria com lojas não pode ser removida".
+
+Os dados iniciais saíram do `DadosApp` e foram para `data/local/DadosIniciais.kt`.
+
+## 3. Por que o Repository existe
+
+Antes, se os dados viessem de outro lugar, teríamos que mexer no `DadosApp`, que também
+tinha estado de tela e regras. Agora o `Repository` esconde de onde os dados vêm. Se um
+dia as lojas vierem de uma API, só o `LojaRepository` muda: ViewModel e tela continuam
+iguais.
+
+Criamos um Repository por Entity principal, e cada um só repassa as chamadas para o DAO:
+
+```kotlin
+class LojaRepository(private val lojaDao: LojaDAO) {
+    fun buscarTodos(): Flow<List<Loja>> = lojaDao.buscarTodos()
+    suspend fun inserir(loja: Loja): Long = lojaDao.inserir(loja)
+    suspend fun atualizar(loja: Loja) = lojaDao.atualizar(loja)
+    suspend fun deletar(loja: Loja) = lojaDao.deletar(loja)
+}
+```
+
+`ItemPedido` não tem Repository próprio porque só existe dentro de um pedido, então
+fica no `PedidoRepository`. O `DadosIniciaisRepository` só popula o banco na primeira
+execução.
+
+## 4. O que tem dentro de cada UiState
+
+Todo ViewModel segue o mesmo padrão: o `_uiState` é privado e só ele altera; a tela lê o
+`uiState` público e chama os métodos do ViewModel.
+
+```kotlin
+private val _uiState = MutableStateFlow(LojasUiState())
+val uiState: StateFlow<LojasUiState> = _uiState.asStateFlow()
+```
+
+| UiState | Campos | Por que esses campos |
+|---|---|---|
+| `InicioUiState` | categorias, lojas | É só o que a tela inicial lista. |
+| `BuscaUiState` | textoBusca, filtroSelecionado, filtros, lojas, categorias | O texto e o filtro definem o resultado, calculado em `resultados`. |
+| `LojasUiState` | lojas, categorias, nome, avaliacao, tempo, taxa, categoriaId | A lista e todos os campos do formulário de nova loja. |
+| `CategoriasUiState` | categorias, lojas, nome, descricao | As lojas servem para contar quantas existem em cada categoria. |
+| `DetalheLojaUiState` | loja, categorias, carregando, novaNota, valorPedido | `carregando` separa "Carregando..." de "Loja não encontrada". `total` é calculado. |
+| `DetalheCategoriaUiState` | categoria, categorias, lojas, carregando, nomeEditado, descricaoEditada | Dados da categoria, formulário de edição e lojas dela. |
+| `PedidoUiState` | pedido, loja, etapas, carregando | O pedido mostra etapa e número; a loja mostra nome e previsão. |
+
+Criamos um ViewModel por tela porque cada tela tem um estado diferente. A
+`AppViewModelFactory` é uma só e foi reaproveitada, já que todos usam os mesmos
+Repositories. O método `comId(id)` passa o id da rota para as telas de detalhe:
+
+```kotlin
+viewModel: DetalheLojaViewModel = viewModel(factory = factory.comId(id))
+```
+
+## 5. Alguma funcionalidade quebrou?
+
+Encontramos os problemas repassando cada funcionalidade do Trabalho 3, tela por tela.
+
+**1. O formulário de editar categoria podia perder o texto digitado**
+Como o `buscarPorId` agora é um `Flow`, cada mudança no banco manda a categoria de novo.
+Se isso sobrescrevesse `nomeEditado` e `descricaoEditada`, o texto seria perdido. Agora o
+formulário só é preenchido na primeira leitura, enquanto `carregando` é `true`.
+
+**2. Os dados iniciais podiam voltar sem querer**
+Colocar a verificação de banco vazio no `InicioViewModel` não servia: ele é recriado a
+cada volta para a tela Início. Quem apagasse todas as categorias veria os dados iniciais
+voltarem com o app aberto. A chamada foi para a `MainActivity`, que roda ao abrir o app.
+
+**3. O pedido entregue sumia da tela de acompanhamento**
+Observar só pedidos "Em andamento" fazia o pedido desaparecer na última etapa, e o aviso
+"O pedido já foi entregue!" nunca aparecia. Agora o `PedidoViewModel` usa o pedido mais
+recente, e a tela só fica vazia se ele tiver sido cancelado.
+
+**4. Os nomes de categoria dentro do `CardLoja`**
+O `CardLoja` buscava o nome no `DadosApp`. Sem esse objeto, ele passou a receber
+`nomeCategoria` como parâmetro, e cada tela informa o nome a partir do seu `UiState`.
+
+### Diferenças de comportamento
+
+As telas e funcionalidades são as mesmas. Duas diferenças internas ficaram:
+
+- **Pedido entregue:** continua aparecendo depois de fechar e abrir o app. No Trabalho 3,
+  a tela voltava para "nenhum pedido" nesse caso.
+- **Erro de banco:** no Trabalho 3, o erro ia só para o log. Agora os blocos do
+  `viewModelScope` não têm `try/catch`, para os métodos ficarem mais simples.
+
+Também removemos do `DadosApp` o que nenhuma tela usava, como `historicoPedidos` e `criarItem`.
+
+## 6. Dificuldades do trio
+
+No começo tivemos dificuldade para entender por que separar tanto o código, já que o
+app funcionava. Colocar uma classe entre o ViewModel e o DAO só para repassar chamadas
+parecia trabalho repetido. Também nos confundimos com as duas variáveis do mesmo estado
+(`_uiState` e `uiState`), e tentamos alterar o estado direto pela tela.
+
+O que resolveu foi fazer primeiro só o caminho de **Lojas**, do DAO até a tela, e seguir
+uma ação do começo ao fim:
+
+1. O usuário toca em "Adicionar loja" e a tela chama `viewModel.adicionarLoja()`.
+2. O ViewModel chama `lojaRepository.inserir(...)`.
+3. O Repository chama o DAO, e o Room grava.
+4. O `Flow` avisa o ViewModel, que atualiza o `_uiState`.
+5. A tela recebe o novo `uiState` e redesenha.
+
+Com esse fluxo, ficou claro que cada camada tem uma função só, e que o `_uiState` privado
+garante que o estado só mude pelo ViewModel. As outras telas seguiram o mesmo modelo.
+
+## 7. Prints e vídeos
+
+Arquivos na pasta [docs/prints](docs/prints):
+
+| Arquivo | O que mostra |
+|---|---|
+| `01-pacotes.png` | Pacotes `ui`, `data`, `data.repository` e `viewmodel` no Android Studio |
+| `02-adicionar-loja.mp4` | Adicionar uma loja e ver a lista atualizar sozinha |
+| `03-editar-remover.mp4` | Editar nota, marcar favorita, editar categoria e remover loja |
+| `04-persistencia.mp4` | Fechar o app, abrir de novo e ver os dados salvos |
+| `05-pedido.mp4` | Fazer pedido, atualizar status, entregar e cancelar |

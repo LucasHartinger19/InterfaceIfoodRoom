@@ -1,4 +1,4 @@
-package com.example.interfaceifood.telas
+package com.example.interfaceifood.ui.telas
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -15,22 +15,27 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.interfaceifood.componentes.CardLoja
-import com.example.interfaceifood.dados.DadosApp
-import com.example.interfaceifood.navegacao.Rotas
+import com.example.interfaceifood.ui.componentes.CardLoja
+import com.example.interfaceifood.ui.componentes.nomeCategoria
+import com.example.interfaceifood.ui.navegacao.Rotas
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
+import com.example.interfaceifood.viewmodel.InicioViewModel
 
 
 @Composable
-fun TelaInicial(navController: NavController) {
-
-    LaunchedEffect(Unit) {
-        DadosApp.carregar()
-    }
+fun TelaInicial(
+    navController: NavController,
+    factory: AppViewModelFactory,
+    viewModel: InicioViewModel = viewModel(factory = factory)
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         Text("ENTREGAR EM", style = MaterialTheme.typography.labelSmall)
@@ -52,7 +57,7 @@ fun TelaInicial(navController: NavController) {
 
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(DadosApp.categorias) { categoria ->
+            items(uiState.categorias) { categoria ->
                 AssistChip(
                     onClick = { navController.navigate("detalheCategoria/${categoria.id}") },
                     label = { Text(categoria.nome) }
@@ -67,8 +72,8 @@ fun TelaInicial(navController: NavController) {
 
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(DadosApp.lojas) { loja ->
-                CardLoja(loja) {
+            items(uiState.lojas) { loja ->
+                CardLoja(loja, nomeCategoria(uiState.categorias, loja.categoriaId)) {
                     navController.navigate("detalheLoja/${loja.id}")
                 }
             }

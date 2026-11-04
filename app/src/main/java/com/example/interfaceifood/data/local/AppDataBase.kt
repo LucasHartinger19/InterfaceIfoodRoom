@@ -1,14 +1,9 @@
-package com.example.interfaceifood.dados
+package com.example.interfaceifood.data.local
 
 import android.content.Context
 import androidx.room3.Database
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
-import com.example.interfaceifood.model.Categoria
-import com.example.interfaceifood.model.ItemPedido
-import com.example.interfaceifood.model.Loja
-import com.example.interfaceifood.model.Pedido
-import com.example.interfaceifood.model.Produto
 
 @Database(
     entities = [
