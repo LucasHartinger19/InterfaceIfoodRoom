@@ -1,4 +1,4 @@
-package com.example.interfaceifood.navegacao
+package com.example.interfaceifood.ui.navegacao
 
 
 object Rotas {

@@ -1,12 +1,11 @@
-package com.example.interfaceifood.dados
+package com.example.interfaceifood.data.local
 
 import androidx.room3.Dao
 import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
-import com.example.interfaceifood.model.ItemPedido
-import com.example.interfaceifood.model.Pedido
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PedidoDAO {
@@ -23,7 +22,7 @@ interface PedidoDAO {
 
 
     @Query("SELECT * FROM pedidos ORDER BY dataHora DESC")
-    suspend fun buscarPedidos(): List<Pedido>
+    fun buscarTodos(): Flow<List<Pedido>>
 
     @Query("SELECT * FROM pedidos WHERE status = 'Em andamento' ORDER BY id DESC LIMIT 1")
     suspend fun buscarPedidoEmAndamento(): Pedido?

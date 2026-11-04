@@ -1,11 +1,11 @@
-package com.example.interfaceifood.dados
+package com.example.interfaceifood.data.local
 
 import androidx.room3.Dao
 import androidx.room3.Delete
 import androidx.room3.Insert
 import androidx.room3.Query
 import androidx.room3.Update
-import com.example.interfaceifood.model.Categoria
+import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface CategoriaDAO {
@@ -14,10 +14,13 @@ interface CategoriaDAO {
     suspend fun inserir(categoria: Categoria): Long
 
     @Query("SELECT * FROM categorias")
-    suspend fun buscarCategorias(): List<Categoria>
+    fun buscarTodos(): Flow<List<Categoria>>
 
     @Query("SELECT * FROM categorias WHERE id = :id")
-    suspend fun buscarPorId(id: Int): Categoria?
+    fun buscarPorId(id: Int): Flow<Categoria?>
+
+    @Query("SELECT COUNT(*) FROM categorias")
+    suspend fun contar(): Int
 
     @Update
     suspend fun atualizar(categoria: Categoria)

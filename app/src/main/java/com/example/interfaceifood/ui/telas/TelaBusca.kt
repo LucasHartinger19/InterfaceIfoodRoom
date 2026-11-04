@@ -1,4 +1,4 @@
-package com.example.interfaceifood.telas
+package com.example.interfaceifood.ui.telas
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,42 +16,31 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.interfaceifood.componentes.CardLoja
-import com.example.interfaceifood.dados.DadosApp
+import com.example.interfaceifood.ui.componentes.CardLoja
+import com.example.interfaceifood.ui.componentes.nomeCategoria
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
+import com.example.interfaceifood.viewmodel.BuscaViewModel
 
 
 @Composable
-fun TelaBusca(navController: NavController) {
-    var textoBusca by remember { mutableStateOf("") }
-    var filtroSelecionado by remember { mutableStateOf("") }
-
-    val filtros = listOf("Melhor avaliação", "Entrega grátis", "Favoritas")
-
-
-    var resultados = DadosApp.lojas.filter { it.nome.contains(textoBusca, ignoreCase = true) }
-
-
-    if (filtroSelecionado == "Melhor avaliação") {
-        resultados = resultados.sortedByDescending { it.avaliacao }
-    }
-    if (filtroSelecionado == "Entrega grátis") {
-        resultados = resultados.filter { it.taxaEntrega == 0.0 }
-    }
-    if (filtroSelecionado == "Favoritas") {
-        resultados = resultados.filter { it.favorita }
-    }
+fun TelaBusca(
+    navController: NavController,
+    factory: AppViewModelFactory,
+    viewModel: BuscaViewModel = viewModel(factory = factory)
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val resultados = uiState.resultados
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         OutlinedTextField(
-            value = textoBusca,
-            onValueChange = { textoBusca = it },
+            value = uiState.textoBusca,
+            onValueChange = { viewModel.alterarTextoBusca(it) },
             placeholder = { Text("O que você quer comer?") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -59,17 +48,10 @@ fun TelaBusca(navController: NavController) {
         Spacer(modifier = Modifier.height(12.dp))
 
         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(filtros) { filtro ->
+            items(uiState.filtros) { filtro ->
                 FilterChip(
-                    selected = filtroSelecionado == filtro,
-                    onClick = {
-
-                        if (filtroSelecionado == filtro) {
-                            filtroSelecionado = ""
-                        } else {
-                            filtroSelecionado = filtro
-                        }
-                    },
+                    selected = uiState.filtroSelecionado == filtro,
+                    onClick = { viewModel.selecionarFiltro(filtro) },
                     label = { Text(filtro) }
                 )
             }
@@ -87,7 +69,7 @@ fun TelaBusca(navController: NavController) {
 
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(resultados) { loja ->
-                CardLoja(loja) {
+                CardLoja(loja, nomeCategoria(uiState.categorias, loja.categoriaId)) {
                     navController.navigate("detalheLoja/${loja.id}")
                 }
             }

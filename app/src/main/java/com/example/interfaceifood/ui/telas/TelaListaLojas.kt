@@ -1,4 +1,4 @@
-package com.example.interfaceifood.telas
+package com.example.interfaceifood.ui.telas
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -25,36 +25,29 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.interfaceifood.dados.DadosApp
-import com.example.interfaceifood.model.Loja
-import com.example.interfaceifood.model.textoTaxa
+import com.example.interfaceifood.ui.componentes.nomeCategoria
+import com.example.interfaceifood.ui.componentes.textoTaxa
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
+import com.example.interfaceifood.viewmodel.LojasViewModel
 
 
 @Composable
-fun TelaListaLojas(navController: NavController) {
+fun TelaListaLojas(
+    navController: NavController,
+    factory: AppViewModelFactory,
+    viewModel: LojasViewModel = viewModel(factory = factory)
+) {
     val context = LocalContext.current
-
-
-    LaunchedEffect(Unit) {
-        DadosApp.carregar()
-    }
-
-    var nome by remember { mutableStateOf("") }
-    var avaliacao by remember { mutableStateOf("") }
-    var tempo by remember { mutableStateOf("") }
-    var taxa by remember { mutableStateOf("") }
-    var categoriaId by remember { mutableStateOf(1) }
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -66,26 +59,26 @@ fun TelaListaLojas(navController: NavController) {
                 Text("Nova loja", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
 
                 OutlinedTextField(
-                    value = nome,
-                    onValueChange = { nome = it },
+                    value = uiState.nome,
+                    onValueChange = { viewModel.alterarNome(it) },
                     label = { Text("Nome da loja") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = avaliacao,
-                    onValueChange = { avaliacao = it },
+                    value = uiState.avaliacao,
+                    onValueChange = { viewModel.alterarAvaliacao(it) },
                     label = { Text("Avaliação (ex: 4.5)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = tempo,
-                    onValueChange = { tempo = it },
+                    value = uiState.tempo,
+                    onValueChange = { viewModel.alterarTempo(it) },
                     label = { Text("Tempo de entrega (ex: 20-30 min)") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = taxa,
-                    onValueChange = { taxa = it },
+                    value = uiState.taxa,
+                    onValueChange = { viewModel.alterarTaxa(it) },
                     label = { Text("Taxa de entrega (0 = grátis)") },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -95,10 +88,10 @@ fun TelaListaLojas(navController: NavController) {
 
 
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(DadosApp.categorias) { categoria ->
+                    items(uiState.categorias) { categoria ->
                         FilterChip(
-                            selected = categoriaId == categoria.id,
-                            onClick = { categoriaId = categoria.id },
+                            selected = uiState.categoriaId == categoria.id,
+                            onClick = { viewModel.selecionarCategoria(categoria.id) },
                             label = { Text(categoria.nome) }
                         )
                     }
@@ -106,24 +99,10 @@ fun TelaListaLojas(navController: NavController) {
 
                 Button(
                     onClick = {
-                        if (nome == "") {
-                            Toast.makeText(context, "Digite o nome da loja", Toast.LENGTH_SHORT).show()
-                        } else {
-                            val novaLoja = Loja(
-                                0, // o Room gera o id (autoGenerate)
-                                nome,
-                                categoriaId,
-                                avaliacao.toDoubleOrNull() ?: 0.0,
-                                tempo,
-                                taxa.toDoubleOrNull() ?: 0.0
-                            )
-                            DadosApp.adicionarLoja(novaLoja)
-
-                            nome = ""
-                            avaliacao = ""
-                            tempo = ""
-                            taxa = ""
+                        if (viewModel.adicionarLoja()) {
                             Toast.makeText(context, "Loja adicionada!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "Digite o nome da loja", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -137,7 +116,7 @@ fun TelaListaLojas(navController: NavController) {
         }
 
 
-        items(DadosApp.lojas) { loja ->
+        items(uiState.lojas) { loja ->
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -149,7 +128,7 @@ fun TelaListaLojas(navController: NavController) {
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(loja.nome, fontWeight = FontWeight.Bold)
-                        Text(loja.avaliacao.toString() + " - " + DadosApp.nomeCategoria(loja.categoriaId))
+                        Text(loja.avaliacao.toString() + " - " + nomeCategoria(uiState.categorias, loja.categoriaId))
                         Text(loja.tempoEntrega + " - " + textoTaxa(loja.taxaEntrega))
                     }
 
@@ -157,12 +136,12 @@ fun TelaListaLojas(navController: NavController) {
                     Checkbox(
                         checked = loja.favorita,
                         onCheckedChange = { marcado ->
-                            DadosApp.atualizarLoja(loja.copy(favorita = marcado))
+                            viewModel.alterarFavorita(loja, marcado)
                         }
                     )
 
 
-                    IconButton(onClick = { DadosApp.removerLoja(loja) }) {
+                    IconButton(onClick = { viewModel.removerLoja(loja) }) {
                         Icon(Icons.Filled.Delete, contentDescription = "Remover")
                     }
                 }

@@ -1,4 +1,4 @@
-package com.example.interfaceifood.navegacao
+package com.example.interfaceifood.ui.navegacao
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -25,18 +25,19 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.example.interfaceifood.telas.TelaAcompanharPedido
-import com.example.interfaceifood.telas.TelaBusca
-import com.example.interfaceifood.telas.TelaDetalheCategoria
-import com.example.interfaceifood.telas.TelaDetalheLoja
-import com.example.interfaceifood.telas.TelaInicial
-import com.example.interfaceifood.telas.TelaListaCategorias
-import com.example.interfaceifood.telas.TelaListaLojas
+import com.example.interfaceifood.ui.telas.TelaAcompanharPedido
+import com.example.interfaceifood.ui.telas.TelaBusca
+import com.example.interfaceifood.ui.telas.TelaDetalheCategoria
+import com.example.interfaceifood.ui.telas.TelaDetalheLoja
+import com.example.interfaceifood.ui.telas.TelaInicial
+import com.example.interfaceifood.ui.telas.TelaListaCategorias
+import com.example.interfaceifood.ui.telas.TelaListaLojas
 import com.example.interfaceifood.ui.theme.VermelhoIfood
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(factory: AppViewModelFactory) {
     val navController = rememberNavController()
 
 
@@ -106,20 +107,20 @@ fun AppNavigation() {
             startDestination = Rotas.INICIO,
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable(Rotas.INICIO) { TelaInicial(navController) }
-            composable(Rotas.BUSCA) { TelaBusca(navController) }
-            composable(Rotas.LOJAS) { TelaListaLojas(navController) }
-            composable(Rotas.CATEGORIAS) { TelaListaCategorias(navController) }
-            composable(Rotas.PEDIDO) { TelaAcompanharPedido(navController) }
+            composable(Rotas.INICIO) { TelaInicial(navController, factory) }
+            composable(Rotas.BUSCA) { TelaBusca(navController, factory) }
+            composable(Rotas.LOJAS) { TelaListaLojas(navController, factory) }
+            composable(Rotas.CATEGORIAS) { TelaListaCategorias(navController, factory) }
+            composable(Rotas.PEDIDO) { TelaAcompanharPedido(navController, factory) }
 
 
             composable(Rotas.DETALHE_LOJA) { backStackEntry ->
                 val id = backStackEntry.arguments?.getString("id") ?: "0"
-                TelaDetalheLoja(navController, id.toInt())
+                TelaDetalheLoja(navController, factory, id.toInt())
             }
             composable(Rotas.DETALHE_CATEGORIA) { backStackEntry ->
                 val id = backStackEntry.arguments?.getString("id") ?: "0"
-                TelaDetalheCategoria(navController, id.toInt())
+                TelaDetalheCategoria(navController, factory, id.toInt())
             }
         }
     }

@@ -1,4 +1,4 @@
-package com.example.interfaceifood.telas
+package com.example.interfaceifood.ui.telas
 
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -15,51 +15,38 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import com.example.interfaceifood.componentes.CardLoja
-import com.example.interfaceifood.dados.DadosApp
-import com.example.interfaceifood.model.Categoria
+import com.example.interfaceifood.ui.componentes.CardLoja
+import com.example.interfaceifood.ui.componentes.nomeCategoria
+import com.example.interfaceifood.viewmodel.AppViewModelFactory
+import com.example.interfaceifood.viewmodel.DetalheCategoriaViewModel
 
 
 @Composable
-fun TelaDetalheCategoria(navController: NavController, id: Int) {
+fun TelaDetalheCategoria(
+    navController: NavController,
+    factory: AppViewModelFactory,
+    id: Int,
+    viewModel: DetalheCategoriaViewModel = viewModel(factory = factory.comId(id))
+) {
     val context = LocalContext.current
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-
-    var categoriaBanco by remember { mutableStateOf<Categoria?>(null) }
-    var carregando by remember { mutableStateOf(true) }
-
-
-    var nomeEditado by remember { mutableStateOf("") }
-    var descricaoEditada by remember { mutableStateOf("") }
-
-    LaunchedEffect(id) {
-        val encontrada = DadosApp.buscarCategoriaNoBanco(id)
-        categoriaBanco = encontrada
-        if (encontrada != null) {
-            nomeEditado = encontrada.nome
-            descricaoEditada = encontrada.descricao
-        }
-        carregando = false
-    }
-
-    val categoria = categoriaBanco
+    val categoria = uiState.categoria
     if (categoria == null) {
-        val mensagem = if (carregando) "Carregando..." else "Categoria não encontrada"
+        val mensagem = if (uiState.carregando) "Carregando..." else "Categoria não encontrada"
         Text(mensagem, modifier = Modifier.padding(16.dp))
         return
     }
 
-    val lojasDaCategoria = DadosApp.lojas.filter { it.categoriaId == categoria.id }
+    val lojasDaCategoria = uiState.lojasDaCategoria
 
     LazyColumn(
         modifier = Modifier.fillMaxSize().padding(16.dp),
@@ -80,14 +67,14 @@ fun TelaDetalheCategoria(navController: NavController, id: Int) {
                 Text("Editar categoria", fontWeight = FontWeight.Bold)
 
                 OutlinedTextField(
-                    value = nomeEditado,
-                    onValueChange = { nomeEditado = it },
+                    value = uiState.nomeEditado,
+                    onValueChange = { viewModel.alterarNome(it) },
                     label = { Text("Nome") },
                     modifier = Modifier.fillMaxWidth()
                 )
                 OutlinedTextField(
-                    value = descricaoEditada,
-                    onValueChange = { descricaoEditada = it },
+                    value = uiState.descricaoEditada,
+                    onValueChange = { viewModel.alterarDescricao(it) },
                     label = { Text("Descrição") },
                     minLines = 2,
                     modifier = Modifier.fillMaxWidth()
@@ -95,13 +82,10 @@ fun TelaDetalheCategoria(navController: NavController, id: Int) {
 
                 Button(
                     onClick = {
-                        if (nomeEditado == "") {
-                            Toast.makeText(context, "O nome não pode ficar vazio", Toast.LENGTH_SHORT).show()
-                        } else {
-                            val editada = categoria.copy(nome = nomeEditado, descricao = descricaoEditada)
-                            DadosApp.atualizarCategoria(editada)
-                            categoriaBanco = editada
+                        if (viewModel.salvarAlteracoes()) {
                             Toast.makeText(context, "Categoria atualizada!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "O nome não pode ficar vazio", Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -115,7 +99,7 @@ fun TelaDetalheCategoria(navController: NavController, id: Int) {
         }
 
         items(lojasDaCategoria) { loja ->
-            CardLoja(loja) {
+            CardLoja(loja, nomeCategoria(uiState.categorias, loja.categoriaId)) {
                 navController.navigate("detalheLoja/${loja.id}")
             }
         }
